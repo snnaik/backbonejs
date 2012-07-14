@@ -16,6 +16,10 @@
 			}
 		}
 	});
+	window.Albums = Backbone.Collection.extend({
+		model: Album,
+		url: '/albums'
+	});
 	window.AlbumView = Backbone.View.extend({
 		tagName: 'li',
 		className: 'album',
