@@ -140,17 +140,30 @@
 		tagName: 'section',
 		className: 'playlist',
 		initialize: function() {
-			_.bindAll(this, 'render');
+			_.bindAll(this, 'render', 'queueAlbum', 'renderAlbum');
 			this.template = _.template($('#playlist-template').html());
 			this.collection.bind('reset', this.render);
+			this.collection.bind('add', this.renderAlbum);
 			this.player = this.options.player;
 			this.library = this.options.library;
+			this.library.bind('select', this.queueAlbum);
 		},
 		render: function() {
 			$(this.el).html(this.template(this.player.toJSON()));
 			this.$('button.play').toggle(this.player.isStopped());
 			this.$('button.pause').toggle(this.player.isPlaying());
 			return this;
+		},
+		renderAlbum: function(album) {
+			var view = new PlaylistAlbumView({
+				model: album,
+				player: this.player,
+				playlist: this.collection
+			});
+			this.$('ul').append(view.render().el);
+		},
+		queueAlbum: function(album) {
+			this.collection.add(album);
 		}
 	});
 	window.LibraryView = Backbone.View.extend({
