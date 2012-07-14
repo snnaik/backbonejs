@@ -122,6 +122,24 @@
 			console.log("Triggered select", this.model);
 		}
 	});
+	window.PlaylistAlbumView = AlbumView.extend({});
+	window.PlaylistView = Backbone.View.extend({
+		tagName: 'section',
+		className: 'playlist',
+		initialize: function() {
+			_.bindAll(this, 'render');
+			this.template = _.template($('#playlist-template').html());
+			this.collection.bind('reset', this.render);
+			this.player = this.options.player;
+			this.library = this.options.library;
+		},
+		render: function() {
+			$(this.el).html(this.template(this.player.toJSON()));
+			this.$('button.play').toggle(this.player.isStopped());
+			this.$('button.pause').toggle(this.player.isPlaying());
+			return this;
+		}
+	});
 	window.LibraryView = Backbone.View.extend({
 		tagName: 'section',
 		className: 'library',
@@ -151,6 +169,11 @@
 			'blank': 'blank'
 		},
 		initialize: function() {
+			this.playlistView = new PlaylistView({
+				collection: window.player.playlist,
+				player: window.player,
+				library: window.library
+			});
 			this.libraryView = new LibraryView({
 				collection: window.library
 			});
@@ -158,6 +181,7 @@
 		home: function() {
 			var $container = $('#container');
 			$container.empty();
+			$container.append(this.playlistView.render().el);
 			$container.append(this.libraryView.render().el);
 		},
 		blank: function() {
