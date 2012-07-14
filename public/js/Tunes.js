@@ -98,7 +98,9 @@
 	});
 	window.library = new Albums();
 	window.player = new Player();
+	$(document).ready(function() {
 	window.AlbumView = Backbone.View.extend({
+		template: _.template($('#album-template').html()),
 		tagName: 'li',
 		className: 'album',
 		initialize: function() {
@@ -122,7 +124,18 @@
 			console.log("Triggered select", this.model);
 		}
 	});
-	window.PlaylistAlbumView = AlbumView.extend({});
+	window.PlaylistAlbumView = AlbumView.extend({
+		events: {
+			'click .queue.remove': 'removeFromPlaylist'
+		},
+		initialize: function() {
+			_.bindAll(this, 'render', 'remove');
+			this.model.bind('remove', this.remove);
+		},
+		removeFromPlaylist: function() {
+			this.options.playlist.remove(this.model);
+		}
+	});
 	window.PlaylistView = Backbone.View.extend({
 		tagName: 'section',
 		className: 'playlist',
@@ -192,5 +205,6 @@
 	$(function() {
 		window.App = new BackboneTunes();
 		Backbone.history.start();
+	});
 	});
 })(jQuery);
