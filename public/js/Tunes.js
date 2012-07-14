@@ -34,6 +34,13 @@
 			'currentTrackIndex': 0,
 			'state': 'stop'
 		},
+		reset: function() {
+			this.set({
+				'currentAlbumIndex': 0,
+				'currentTrackIndex': 0,
+				'state': 'stop'
+			});
+		},
 		initialize: function() {
 			this.playlist = new Playlist();
 		},
@@ -54,7 +61,11 @@
         },
 		currentTrackUrl: function() {
 			var album = this.currentAlbum();
-			return album.trackUrlAtIndex(this.get('currentTrackIndex'));
+			if (album) {
+				return album.trackUrlAtIndex(this.get('currentTrackIndex'));
+			} else {
+				return null;
+			}
 		},
 		nextTrack: function() {
 			var currentTrackIndex = this.get('currentTrackIndex'),
@@ -121,7 +132,6 @@
 		},
 		select: function() {
 			this.collection.trigger('select', this.model);
-			console.log("Triggered select", this.model);
 		}
 	});
 	window.PlaylistAlbumView = AlbumView.extend({
@@ -129,24 +139,59 @@
 			'click .queue.remove': 'removeFromPlaylist'
 		},
 		initialize: function() {
-			_.bindAll(this, 'render', 'remove');
+			_.bindAll(this, 'render', 'updateState', 'updateTrack', 'remove');
+			this.player = this.options.player;
+			this.player.bind('change:state', this.updateState);
+			this.player.bind('change:currentTrackIndex', this.updateTrack);
 			this.model.bind('remove', this.remove);
+		},
+		render: function() {
+			$(this.el).html(this.template(this.model.toJSON()));
+			this.updateTrack();
+			return this;
+		},
+		updateState: function() {
+			var isAlbumCurrent = (this.player.currentAlbum() === this.model);
+			$(this.el).toggleClass('current', isAlbumCurrent);
+		},
+		updateTrack: function() {
+			var isAlbumCurrent = (this.player.currentAlbum() === this.model);
+			if (isAlbumCurrent) {
+				var currentTrackIndex = this.player.get('currentTrackIndex');
+				this.$("li").each(function(index, el) {
+					$(el).toggleClass('current', index == currentTrackIndex);
+				});
+			}
+			this.updateState();
 		},
 		removeFromPlaylist: function() {
 			this.options.playlist.remove(this.model);
+			this.player.reset();
 		}
 	});
 	window.PlaylistView = Backbone.View.extend({
 		tagName: 'section',
 		className: 'playlist',
+		template: _.template($("#playlist-template").html()),
+		events: {
+			'click .play': 'play',
+			'click .pause': 'pause',
+			'click .next': 'nextTrack',
+			'click .prev': 'prevTrack'
+		},
 		initialize: function() {
-			_.bindAll(this, 'render', 'queueAlbum', 'renderAlbum');
-			this.template = _.template($('#playlist-template').html());
+			_.bindAll(this, 'render', 'renderAlbum', 'updateState', 'updateTrack', 'queueAlbum');
 			this.collection.bind('reset', this.render);
 			this.collection.bind('add', this.renderAlbum);
 			this.player = this.options.player;
+			this.player.bind('change:state', this.updateState);
+			this.player.bind('change:currentTrackIndex', this.updateTrack);
+			this.createAudio();
 			this.library = this.options.library;
 			this.library.bind('select', this.queueAlbum);
+		},
+		createAudio: function() {
+			this.audio = new Audio();
 		},
 		render: function() {
 			$(this.el).html(this.template(this.player.toJSON()));
@@ -162,8 +207,33 @@
 			});
 			this.$('ul').append(view.render().el);
 		},
+		updateState: function() {
+			this.updateTrack();
+			this.$("button.play").toggle(this.player.isStopped());
+			this.$("button.pause").toggle(this.player.isPlaying());
+		},
+		updateTrack: function() {
+			this.audio.src = this.player.currentTrackUrl();
+			if (this.player.get('state') == 'play') {
+				this.audio.play();
+			} else {
+				this.audio.pause();
+			}
+		},
 		queueAlbum: function(album) {
 			this.collection.add(album);
+		},
+		play: function() {
+			this.player.play();
+		},
+		pause: function() {
+			this.player.pause();
+		},
+		nextTrack: function() {
+			this.player.nextTrack();
+		},
+		prevTrack: function() {
+			this.player.prevTrack();
 		}
 	});
 	window.LibraryView = Backbone.View.extend({
